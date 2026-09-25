@@ -10,6 +10,8 @@ import os
 
 from flask import Flask, render_template
 
+from database import close_db, create_tables
+
 # ------------------------------------------------------------------
 # App setup
 # ------------------------------------------------------------------
@@ -18,6 +20,12 @@ app = Flask(__name__)
 # The secret key signs the session cookie. In real deployments set the
 # SECRET_KEY environment variable; the fallback is only for local development.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
+
+# Close the database connection automatically after every request.
+app.teardown_appcontext(close_db)
+
+# Make sure all tables exist, even if "python init_db.py" was forgotten.
+create_tables()
 
 # ------------------------------------------------------------------
 # Settings used across the app

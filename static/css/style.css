@@ -255,10 +255,40 @@ h1, h2, h3 {
     margin: 0;
 }
 
-.nav-greeting {
-    color: var(--color-gray);
-    font-size: 0.95rem;
-    padding: 0 6px;
+/* Hamburger button (three bars). Hidden on big screens. */
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+}
+
+.nav-toggle span {
+    display: block;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--color-dark);
+    transition: transform 0.25s, opacity 0.25s;
+}
+
+/* When the menu is open the three bars turn into an "X" */
+.nav-toggle[aria-expanded="true"] span:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+
+.nav-toggle[aria-expanded="true"] span:nth-child(2) {
+    opacity: 0;
+}
+
+.nav-toggle[aria-expanded="true"] span:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
 }
 
 /* ---------- 5. Flash messages ---------- */
@@ -1213,4 +1243,183 @@ a.stat-card:hover {
     gap: 12px;
     flex-wrap: wrap;
     margin-top: 24px;
+}
+
+/* ==================================================================
+   14. Responsive design
+   The rules below only apply when the screen is narrower than the
+   given width, so the same HTML works on laptops, tablets and phones.
+   ================================================================== */
+
+/* ---------- Tablets (900px and below) ---------- */
+@media (max-width: 900px) {
+    .hero h1 {
+        font-size: 2.4rem;
+    }
+
+    /* Stack the two-column layouts on top of each other */
+    .recipe-hero,
+    .recipe-content,
+    .reviews-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .recipe-hero {
+        gap: 24px;
+    }
+
+    .recipe-content {
+        margin-top: 32px;
+    }
+}
+
+/* ---------- Small tablets and big phones (768px and below) ---------- */
+@media (max-width: 768px) {
+    /* Show the hamburger button and turn the links into a drop-down panel */
+    .nav-toggle {
+        display: flex;
+    }
+
+    .nav-links {
+        display: none;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding: 8px 0 16px;
+        border-top: 1px solid var(--color-border);
+    }
+
+    /* script.js adds the "open" class when the hamburger is clicked */
+    .nav-links.open {
+        display: flex;
+    }
+
+    .nav-links a,
+    .nav-links .nav-btn {
+        border-radius: var(--radius-small);
+        text-align: left;
+        width: 100%;
+    }
+
+    .section {
+        padding: 44px 0;
+    }
+
+    .hero {
+        padding: 60px 0 70px;
+    }
+
+    .section-header h2,
+    .cta h2 {
+        font-size: 1.6rem;
+    }
+
+    .page-header {
+        padding: 32px 0 28px;
+    }
+
+    .page-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .form-card {
+        padding: 24px 20px;
+    }
+
+    .recipe-hero-info h1 {
+        font-size: 1.8rem;
+    }
+
+    /* 2 x 2 quick-fact boxes instead of 4 in a row */
+    .recipe-facts {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .recipe-panel {
+        padding: 20px;
+    }
+
+    .footer-inner {
+        flex-direction: column;
+    }
+}
+
+/* ---------- Phones (480px and below) ---------- */
+@media (max-width: 480px) {
+    .container {
+        padding: 0 16px;
+    }
+
+    .hero h1 {
+        font-size: 1.9rem;
+    }
+
+    .hero-text {
+        font-size: 1rem;
+    }
+
+    /* Search field and button on separate lines */
+    .hero-search {
+        flex-direction: column;
+        border-radius: var(--radius);
+    }
+
+    .hero-search input {
+        text-align: center;
+    }
+
+    .category-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .category-card {
+        padding: 10px 12px;
+        gap: 8px;
+        font-size: 0.95rem;
+    }
+
+    .category-letter {
+        width: 30px;
+        height: 30px;
+    }
+
+    /* Filters fill the whole width on phones */
+    .filter-bar > * {
+        flex: 1 1 100%;
+    }
+
+    .recipe-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .recipe-actions .btn,
+    .recipe-actions form {
+        flex: 1 1 100%;
+    }
+
+    .recipe-actions .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .form-actions .btn {
+        flex: 1 1 100%;
+        text-align: center;
+    }
+
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .profile-header .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .error-code {
+        font-size: 4.5rem;
+    }
 }

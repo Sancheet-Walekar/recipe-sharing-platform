@@ -7,6 +7,7 @@
 
 // Run our code once the HTML page has fully loaded.
 document.addEventListener("DOMContentLoaded", function () {
+    setupMobileMenu();
     setupFlashMessages();
     setupConfirmForms();
     setupImagePreview();
@@ -86,6 +87,23 @@ function setupImagePreview() {
         // Show the chosen picture before it is uploaded
         preview.src = URL.createObjectURL(file);
         preview.hidden = false;
+    });
+}
+
+
+/* ---------- Mobile menu (hamburger button) ---------- */
+function setupMobileMenu() {
+    const toggleButton = document.querySelector(".nav-toggle");
+    const navLinks = document.querySelector(".nav-links");
+    if (!toggleButton || !navLinks) {
+        return;
+    }
+
+    toggleButton.addEventListener("click", function () {
+        const isOpen = navLinks.classList.toggle("open");
+        // aria-* attributes tell screen readers whether the menu is open
+        toggleButton.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        toggleButton.setAttribute("aria-label", isOpen ? "Close menu" : "Open menu");
     });
 }
 

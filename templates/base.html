@@ -18,7 +18,13 @@
                 <span>Recipe<em>Share</em></span>
             </a>
 
-            <ul class="nav-links">
+            <!-- Hamburger button: only visible on small screens (see style.css) -->
+            <button type="button" class="nav-toggle" aria-label="Open menu"
+                    aria-expanded="false" aria-controls="nav-links">
+                <span></span><span></span><span></span>
+            </button>
+
+            <ul class="nav-links" id="nav-links">
                 <li><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Home</a></li>
                 <li><a href="{{ url_for('recipes') }}" class="{{ 'active' if request.endpoint == 'recipes' }}">Recipes</a></li>
 

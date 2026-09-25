@@ -1,0 +1,25 @@
+# Virtual environment (every developer creates their own)
+venv/
+.venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# SQLite database (generated locally by init_db.py)
+*.db
+*.sqlite3
+
+# Secrets / environment variables
+.env
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Images uploaded by users (keep the folder itself via .gitkeep)
+static/uploads/recipes/*
+!static/uploads/recipes/.gitkeep

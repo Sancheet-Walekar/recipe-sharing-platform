@@ -46,6 +46,13 @@ MAX_NAME_LENGTH = 60
 # A simple (not perfect) email check: something@something.something
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+# Limits for the recipe form
+MAX_TITLE_LENGTH = 100
+MAX_DESCRIPTION_LENGTH = 500
+MAX_LONG_TEXT_LENGTH = 5000      # ingredients and instructions
+MAX_MINUTES = 1440               # 24 hours
+MAX_SERVINGS = 100
+
 
 @app.context_processor
 def inject_globals():
@@ -96,6 +103,76 @@ def login_required(view):
 def is_safe_next_url(target):
     """Only allow redirects to pages on our own site (e.g. "/recipes/3")."""
     return bool(target) and target.startswith("/") and not target.startswith("//")
+
+
+# ------------------------------------------------------------------
+# Recipe form validation (used by both "add" and "edit")
+# ------------------------------------------------------------------
+def parse_whole_number(value, label, minimum, maximum, errors):
+    """
+    Turn text like "15" into the number 15.
+    Adds a message to "errors" and returns None if the value is not valid.
+    """
+    try:
+        number = int(value)
+    except (TypeError, ValueError):
+        errors.append(f"{label} must be a whole number.")
+        return None
+    if number < minimum or number > maximum:
+        errors.append(f"{label} must be between {minimum} and {maximum}.")
+        return None
+    return number
+
+
+def validate_recipe_form(form):
+    """
+    Check every recipe field sent by the browser.
+    Returns (recipe_data, errors). If "errors" is empty the data is safe to save.
+    """
+    errors = []
+    recipe_data = {
+        "title": form.get("title", "").strip(),
+        "description": form.get("description", "").strip(),
+        "ingredients": form.get("ingredients", "").strip(),
+        "instructions": form.get("instructions", "").strip(),
+        "category": form.get("category", ""),
+        "difficulty": form.get("difficulty", ""),
+        "prep_time": form.get("prep_time", "").strip(),
+        "cook_time": form.get("cook_time", "").strip(),
+        "servings": form.get("servings", "").strip(),
+    }
+
+    # Required text fields with a maximum length
+    text_rules = [
+        ("title", "Title", MAX_TITLE_LENGTH),
+        ("description", "Description", MAX_DESCRIPTION_LENGTH),
+        ("ingredients", "Ingredients", MAX_LONG_TEXT_LENGTH),
+        ("instructions", "Instructions", MAX_LONG_TEXT_LENGTH),
+    ]
+    for field, label, max_length in text_rules:
+        if not recipe_data[field]:
+            errors.append(f"{label} is required.")
+        elif len(recipe_data[field]) > max_length:
+            errors.append(f"{label} must be at most {max_length} characters.")
+
+    # Drop-downs must contain one of our allowed values
+    if recipe_data["category"] not in CATEGORIES:
+        errors.append("Please choose a valid category.")
+    if recipe_data["difficulty"] not in DIFFICULTIES:
+        errors.append("Please choose a valid difficulty.")
+
+    # Numbers: keep the typed text if invalid so the form can show it again
+    number_rules = [
+        ("prep_time", "Preparation time", 0, MAX_MINUTES),
+        ("cook_time", "Cooking time", 0, MAX_MINUTES),
+        ("servings", "Servings", 1, MAX_SERVINGS),
+    ]
+    for field, label, minimum, maximum in number_rules:
+        number = parse_whole_number(recipe_data[field], label, minimum, maximum, errors)
+        if number is not None:
+            recipe_data[field] = number
+
+    return recipe_data, errors
 
 
 # ------------------------------------------------------------------
@@ -220,6 +297,42 @@ def logout():
     session.clear()
     flash("You have been logged out.", "info")
     return redirect(url_for("index"))
+
+
+# ------------------------------------------------------------------
+# Recipes: create
+# ------------------------------------------------------------------
+@app.route("/recipes/add", methods=["GET", "POST"])
+@login_required
+def add_recipe():
+    """Show the empty recipe form (GET) and save a new recipe (POST)."""
+    if request.method == "POST":
+        recipe_data, errors = validate_recipe_form(request.form)
+
+        if errors:
+            for error in errors:
+                flash(error, "error")
+            return render_template("add_recipe.html", form=recipe_data)
+
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO recipes (user_id, title, description, ingredients, instructions,
+                                 category, difficulty, prep_time, cook_time, servings)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                g.user["id"], recipe_data["title"], recipe_data["description"],
+                recipe_data["ingredients"], recipe_data["instructions"],
+                recipe_data["category"], recipe_data["difficulty"],
+                recipe_data["prep_time"], recipe_data["cook_time"], recipe_data["servings"],
+            ),
+        )
+        db.commit()
+        flash("Recipe added successfully!", "success")
+        return redirect(url_for("recipes"))
+
+    return render_template("add_recipe.html", form={})
 
 
 # ------------------------------------------------------------------

@@ -1,0 +1,71 @@
+{#
+    Recipe form fields shared by add_recipe.html and edit_recipe.html.
+    "form" is a dictionary with the current values (empty when adding).
+#}
+<div class="form-group">
+    <label for="title">Recipe title</label>
+    <input type="text" id="title" name="title" value="{{ form.get('title', '') }}"
+           maxlength="100" required placeholder="e.g. Creamy Tomato Pasta">
+</div>
+
+<div class="form-group">
+    <label for="description">Short description</label>
+    <textarea id="description" name="description" maxlength="500" rows="3" required
+              placeholder="What makes this dish special?">{{ form.get('description', '') }}</textarea>
+</div>
+
+<div class="form-row">
+    <div class="form-group">
+        <label for="category">Category</label>
+        <select id="category" name="category" required>
+            <option value="">Choose a category</option>
+            {% for category in categories %}
+                <option value="{{ category }}" {{ 'selected' if form.get('category') == category }}>{{ category }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="difficulty">Difficulty</label>
+        <select id="difficulty" name="difficulty" required>
+            <option value="">Choose difficulty</option>
+            {% for difficulty in difficulties %}
+                <option value="{{ difficulty }}" {{ 'selected' if form.get('difficulty') == difficulty }}>{{ difficulty }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div class="form-row">
+    <div class="form-group">
+        <label for="prep_time">Prep time (minutes)</label>
+        <input type="number" id="prep_time" name="prep_time" value="{{ form.get('prep_time', '') }}"
+               min="0" max="1440" required placeholder="15">
+    </div>
+
+    <div class="form-group">
+        <label for="cook_time">Cook time (minutes)</label>
+        <input type="number" id="cook_time" name="cook_time" value="{{ form.get('cook_time', '') }}"
+               min="0" max="1440" required placeholder="30">
+    </div>
+
+    <div class="form-group">
+        <label for="servings">Servings</label>
+        <input type="number" id="servings" name="servings" value="{{ form.get('servings', '') }}"
+               min="1" max="100" required placeholder="4">
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="ingredients">Ingredients</label>
+    <textarea id="ingredients" name="ingredients" rows="7" maxlength="5000" required
+              placeholder="One ingredient per line, e.g.&#10;200 g pasta&#10;2 tomatoes">{{ form.get('ingredients', '') }}</textarea>
+    <small class="form-hint">Write one ingredient per line.</small>
+</div>
+
+<div class="form-group">
+    <label for="instructions">Instructions</label>
+    <textarea id="instructions" name="instructions" rows="8" maxlength="5000" required
+              placeholder="One step per line, e.g.&#10;Boil the pasta.&#10;Make the sauce.">{{ form.get('instructions', '') }}</textarea>
+    <small class="form-hint">Write one step per line. Steps are numbered automatically.</small>
+</div>

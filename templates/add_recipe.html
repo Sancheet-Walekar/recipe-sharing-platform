@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Add Recipe{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div class="container">
+        <h1>Share a new recipe</h1>
+        <p>Fill in the details below. Fields are checked again on the server.</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        <div class="form-card">
+            <form method="post" action="{{ url_for('add_recipe') }}" class="form">
+                {% include "_recipe_form_fields.html" %}
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Publish recipe</button>
+                    <a href="{{ url_for('recipes') }}" class="btn btn-outline">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}

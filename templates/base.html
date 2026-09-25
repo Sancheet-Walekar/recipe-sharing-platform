@@ -25,6 +25,7 @@
                 {% if current_user %}
                     <!-- Links for logged-in users -->
                     <li><a href="{{ url_for('add_recipe') }}" class="{{ 'active' if request.endpoint == 'add_recipe' }}">Add Recipe</a></li>
+                    <li><a href="{{ url_for('favorites') }}" class="{{ 'active' if request.endpoint == 'favorites' }}">Favorites</a></li>
                     <li class="nav-greeting">Hi, {{ current_user.name.split()[0] }}</li>
                     <li>
                         <!-- Logout is a POST form so it cannot be triggered by a simple link -->

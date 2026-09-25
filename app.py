@@ -318,6 +318,25 @@ def user_owns_recipe(recipe):
     return g.user is not None and g.user["id"] == recipe["user_id"]
 
 
+def is_favorite(recipe_id):
+    """True if the logged-in user has saved this recipe to their favorites."""
+    if g.user is None:
+        return False
+    row = get_db().execute(
+        "SELECT 1 FROM favorites WHERE user_id = ? AND recipe_id = ?",
+        (g.user["id"], recipe_id),
+    ).fetchone()
+    return row is not None
+
+
+def redirect_back(default_url):
+    """Go back to the page named in the hidden "next" form field, if it is safe."""
+    next_url = request.form.get("next", "")
+    if is_safe_next_url(next_url):
+        return redirect(next_url)
+    return redirect(default_url)
+
+
 # ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
@@ -380,7 +399,10 @@ def recipe_details(recipe_id):
     """Full page for a single recipe."""
     recipe = get_recipe_or_404(recipe_id)
     return render_template(
-        "recipe_details.html", recipe=recipe, is_owner=user_owns_recipe(recipe)
+        "recipe_details.html",
+        recipe=recipe,
+        is_owner=user_owns_recipe(recipe),
+        is_favorite=is_favorite(recipe_id),
     )
 
 
@@ -622,6 +644,54 @@ def delete_recipe(recipe_id):
     delete_recipe_image(recipe["image"])
     flash(f'Recipe "{recipe["title"]}" was deleted.', "success")
     return redirect(url_for("recipes"))
+
+
+# ------------------------------------------------------------------
+# Favorites
+# ------------------------------------------------------------------
+@app.route("/recipes/<int:recipe_id>/favorite", methods=["POST"])
+@login_required
+def add_favorite(recipe_id):
+    """Save a recipe to the logged-in user's favorites."""
+    get_recipe_or_404(recipe_id)
+    db = get_db()
+    # "OR IGNORE" + the UNIQUE(user_id, recipe_id) rule = no duplicate favorites
+    cursor = db.execute(
+        "INSERT OR IGNORE INTO favorites (user_id, recipe_id) VALUES (?, ?)",
+        (g.user["id"], recipe_id),
+    )
+    db.commit()
+
+    if cursor.rowcount == 0:
+        flash("This recipe is already in your favorites.", "info")
+    else:
+        flash("Added to your favorites.", "success")
+    return redirect_back(url_for("recipe_details", recipe_id=recipe_id))
+
+
+@app.route("/recipes/<int:recipe_id>/unfavorite", methods=["POST"])
+@login_required
+def remove_favorite(recipe_id):
+    """Remove a recipe from the logged-in user's favorites."""
+    db = get_db()
+    db.execute(
+        "DELETE FROM favorites WHERE user_id = ? AND recipe_id = ?",
+        (g.user["id"], recipe_id),
+    )
+    db.commit()
+    flash("Removed from your favorites.", "info")
+    return redirect_back(url_for("recipe_details", recipe_id=recipe_id))
+
+
+@app.route("/favorites")
+@login_required
+def favorites():
+    """Page listing every recipe the logged-in user has saved."""
+    favorite_recipes = fetch_recipes(
+        ["recipes.id IN (SELECT recipe_id FROM favorites WHERE user_id = ?)"],
+        [g.user["id"]],
+    )
+    return render_template("favorites.html", recipes=favorite_recipes)
 
 
 # ------------------------------------------------------------------

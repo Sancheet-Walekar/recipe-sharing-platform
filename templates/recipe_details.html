@@ -37,6 +37,21 @@
 
                 <!-- Action buttons -->
                 <div class="recipe-actions">
+                    <!-- Favorite button: logged-in users only -->
+                    {% if current_user %}
+                        {% if is_favorite %}
+                            <form action="{{ url_for('remove_favorite', recipe_id=recipe.id) }}" method="post">
+                                <button type="submit" class="btn btn-favorite is-favorite">&#9829; Saved to favorites</button>
+                            </form>
+                        {% else %}
+                            <form action="{{ url_for('add_favorite', recipe_id=recipe.id) }}" method="post">
+                                <button type="submit" class="btn btn-favorite">&#9825; Add to favorites</button>
+                            </form>
+                        {% endif %}
+                    {% else %}
+                        <a href="{{ url_for('login', next=request.path) }}" class="btn btn-favorite">&#9825; Log in to save</a>
+                    {% endif %}
+
                     {% if is_owner %}
                         <!-- Only the author sees these (Flask checks ownership again) -->
                         <a href="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="btn btn-outline">Edit</a>

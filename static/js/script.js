@@ -8,7 +8,24 @@
 // Run our code once the HTML page has fully loaded.
 document.addEventListener("DOMContentLoaded", function () {
     setupFlashMessages();
+    setupConfirmForms();
 });
+
+
+/* ---------- "Are you sure?" before dangerous actions ---------- */
+// Any <form data-confirm="Question?"> asks the question before submitting.
+function setupConfirmForms() {
+    const forms = document.querySelectorAll("form[data-confirm]");
+
+    forms.forEach(function (form) {
+        form.addEventListener("submit", function (event) {
+            const question = form.getAttribute("data-confirm");
+            if (!window.confirm(question)) {
+                event.preventDefault(); // user clicked "Cancel": do not submit
+            }
+        });
+    });
+}
 
 
 /* ---------- Flash messages: close button + auto-hide ---------- */

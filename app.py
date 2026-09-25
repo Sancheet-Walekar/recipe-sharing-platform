@@ -241,6 +241,11 @@ def get_recipe_or_404(recipe_id):
     return recipe
 
 
+def user_owns_recipe(recipe):
+    """True only if someone is logged in AND they created this recipe."""
+    return g.user is not None and g.user["id"] == recipe["user_id"]
+
+
 # ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
@@ -261,8 +266,9 @@ def recipes():
 def recipe_details(recipe_id):
     """Full page for a single recipe."""
     recipe = get_recipe_or_404(recipe_id)
-    is_owner = g.user is not None and g.user["id"] == recipe["user_id"]
-    return render_template("recipe_details.html", recipe=recipe, is_owner=is_owner)
+    return render_template(
+        "recipe_details.html", recipe=recipe, is_owner=user_owns_recipe(recipe)
+    )
 
 
 # ------------------------------------------------------------------
@@ -409,6 +415,71 @@ def add_recipe():
         return redirect(url_for("recipe_details", recipe_id=cursor.lastrowid))
 
     return render_template("add_recipe.html", form={})
+
+
+# ------------------------------------------------------------------
+# Recipes: edit and delete (only the owner is allowed)
+# ------------------------------------------------------------------
+@app.route("/recipes/<int:recipe_id>/edit", methods=["GET", "POST"])
+@login_required
+def edit_recipe(recipe_id):
+    """Show the filled-in form (GET) and save the changes (POST)."""
+    recipe = get_recipe_or_404(recipe_id)
+
+    # Security: hiding the Edit button is not enough - check on the server too
+    if not user_owns_recipe(recipe):
+        flash("You can only edit your own recipes.", "error")
+        return redirect(url_for("recipe_details", recipe_id=recipe_id))
+
+    if request.method == "POST":
+        recipe_data, errors = validate_recipe_form(request.form)
+
+        if errors:
+            for error in errors:
+                flash(error, "error")
+            return render_template("edit_recipe.html", recipe=recipe, form=recipe_data)
+
+        db = get_db()
+        db.execute(
+            """
+            UPDATE recipes
+            SET title = ?, description = ?, ingredients = ?, instructions = ?,
+                category = ?, difficulty = ?, prep_time = ?, cook_time = ?, servings = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+            """,
+            (
+                recipe_data["title"], recipe_data["description"],
+                recipe_data["ingredients"], recipe_data["instructions"],
+                recipe_data["category"], recipe_data["difficulty"],
+                recipe_data["prep_time"], recipe_data["cook_time"], recipe_data["servings"],
+                recipe_id, g.user["id"],
+            ),
+        )
+        db.commit()
+        flash("Recipe updated successfully!", "success")
+        return redirect(url_for("recipe_details", recipe_id=recipe_id))
+
+    # dict(recipe) turns the database row into a normal dictionary for the form
+    return render_template("edit_recipe.html", recipe=recipe, form=dict(recipe))
+
+
+@app.route("/recipes/<int:recipe_id>/delete", methods=["POST"])
+@login_required
+def delete_recipe(recipe_id):
+    """Delete a recipe. Its favorites, reviews and ratings are removed automatically
+    by the database because of ON DELETE CASCADE."""
+    recipe = get_recipe_or_404(recipe_id)
+
+    if not user_owns_recipe(recipe):
+        flash("You can only delete your own recipes.", "error")
+        return redirect(url_for("recipe_details", recipe_id=recipe_id))
+
+    db = get_db()
+    db.execute("DELETE FROM recipes WHERE id = ? AND user_id = ?", (recipe_id, g.user["id"]))
+    db.commit()
+    flash(f'Recipe "{recipe["title"]}" was deleted.', "success")
+    return redirect(url_for("recipes"))
 
 
 # ------------------------------------------------------------------

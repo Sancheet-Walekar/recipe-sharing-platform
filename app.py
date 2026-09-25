@@ -680,7 +680,7 @@ def delete_recipe(recipe_id):
     db.commit()
     delete_recipe_image(recipe["image"])
     flash(f'Recipe "{recipe["title"]}" was deleted.', "success")
-    return redirect(url_for("recipes"))
+    return redirect(url_for("profile"))
 
 
 # ------------------------------------------------------------------
@@ -809,6 +809,32 @@ def favorites():
         [g.user["id"]],
     )
     return render_template("favorites.html", recipes=favorite_recipes)
+
+
+# ------------------------------------------------------------------
+# Profile
+# ------------------------------------------------------------------
+def count_rows(table, user_id):
+    """Count how many rows in a table belong to a user.
+    "table" is always one of OUR fixed table names below, never user input."""
+    return get_db().execute(
+        f"SELECT COUNT(*) FROM {table} WHERE user_id = ?", (user_id,)
+    ).fetchone()[0]
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    """The logged-in user's account details, statistics and recipes."""
+    user_id = g.user["id"]
+    stats = {
+        "recipes": count_rows("recipes", user_id),
+        "favorites": count_rows("favorites", user_id),
+        "reviews": count_rows("reviews", user_id),
+    }
+    my_recipes = fetch_recipes(["recipes.user_id = ?"], [user_id])
+    # g.user was loaded WITHOUT the password column, so it is never shown
+    return render_template("profile.html", user=g.user, stats=stats, recipes=my_recipes)
 
 
 # ------------------------------------------------------------------

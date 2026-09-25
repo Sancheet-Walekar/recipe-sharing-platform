@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<!-- ===================== ACCOUNT SUMMARY ===================== -->
+<section class="page-header">
+    <div class="container profile-header">
+        <span class="profile-avatar">{{ user.name[0] | upper }}</span>
+
+        <div class="profile-info">
+            <h1>{{ user.name }}</h1>
+            <p>{{ user.email }}</p>
+            <p class="profile-joined">Member since {{ user.created_at | nice_date }}</p>
+        </div>
+
+        <a href="{{ url_for('add_recipe') }}" class="btn btn-primary">+ Add a recipe</a>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+
+        <!-- ===================== STATISTICS ===================== -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <strong>{{ stats.recipes }}</strong>
+                <span>Recipe{{ '' if stats.recipes == 1 else 's' }} shared</span>
+            </div>
+            <a class="stat-card" href="{{ url_for('favorites') }}">
+                <strong>{{ stats.favorites }}</strong>
+                <span>Favorite{{ '' if stats.favorites == 1 else 's' }}</span>
+            </a>
+            <div class="stat-card">
+                <strong>{{ stats.reviews }}</strong>
+                <span>Review{{ '' if stats.reviews == 1 else 's' }} written</span>
+            </div>
+        </div>
+
+        <!-- ===================== MY RECIPES ===================== -->
+        <div class="section-header section-header-left">
+            <h2>My recipes</h2>
+        </div>
+
+        {% if recipes %}
+            <div class="recipe-grid">
+                {% for recipe in recipes %}
+                    {% include "_recipe_card.html" %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>You have not shared any recipes yet</h3>
+                <p>Your recipes will appear here once you add them.</p>
+                <a href="{{ url_for('add_recipe') }}" class="btn btn-primary">Share your first recipe</a>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

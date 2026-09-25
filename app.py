@@ -57,6 +57,11 @@ MAX_LONG_TEXT_LENGTH = 5000      # ingredients and instructions
 MAX_MINUTES = 1440               # 24 hours
 MAX_SERVINGS = 100
 
+# Reviews and ratings
+MIN_RATING = 1
+MAX_RATING = 5
+MAX_COMMENT_LENGTH = 1000
+
 LATEST_RECIPES_ON_HOME = 6
 
 # Image uploads are stored on this computer, inside static/uploads/recipes/
@@ -272,11 +277,16 @@ def delete_recipe_image(filename):
 # ------------------------------------------------------------------
 # Database query helpers for recipes
 # ------------------------------------------------------------------
-# Every recipe list needs the same columns: the recipe itself plus the
-# author's name. Keeping the SQL in one place avoids copy-pasting it.
+# Every recipe list needs the same columns: the recipe itself, the author's
+# name and the rating summary. Keeping the SQL in one place avoids copy-pasting.
+# The two small sub-queries calculate the average rating and number of ratings.
 RECIPE_LIST_SQL = """
     SELECT recipes.*,
-           users.name AS author_name
+           users.name AS author_name,
+           (SELECT ROUND(AVG(rating), 1) FROM ratings
+             WHERE ratings.recipe_id = recipes.id) AS avg_rating,
+           (SELECT COUNT(*) FROM ratings
+             WHERE ratings.recipe_id = recipes.id) AS rating_count
     FROM recipes
     JOIN users ON users.id = recipes.user_id
 """
@@ -327,6 +337,24 @@ def is_favorite(recipe_id):
         (g.user["id"], recipe_id),
     ).fetchone()
     return row is not None
+
+
+def get_reviews(recipe_id):
+    """All reviews of a recipe, newest first, with the reviewer's name and star rating."""
+    return get_db().execute(
+        """
+        SELECT reviews.id, reviews.user_id, reviews.comment, reviews.created_at,
+               users.name AS reviewer_name,
+               ratings.rating
+        FROM reviews
+        JOIN users ON users.id = reviews.user_id
+        LEFT JOIN ratings ON ratings.user_id = reviews.user_id
+                         AND ratings.recipe_id = reviews.recipe_id
+        WHERE reviews.recipe_id = ?
+        ORDER BY reviews.created_at DESC, reviews.id DESC
+        """,
+        (recipe_id,),
+    ).fetchall()
 
 
 def redirect_back(default_url):
@@ -398,9 +426,18 @@ def recipes():
 def recipe_details(recipe_id):
     """Full page for a single recipe."""
     recipe = get_recipe_or_404(recipe_id)
+    reviews = get_reviews(recipe_id)
+
+    # If the logged-in user already reviewed this recipe, pre-fill the form
+    my_review = None
+    if g.user:
+        my_review = next((r for r in reviews if r["user_id"] == g.user["id"]), None)
+
     return render_template(
         "recipe_details.html",
         recipe=recipe,
+        reviews=reviews,
+        my_review=my_review,
         is_owner=user_owns_recipe(recipe),
         is_favorite=is_favorite(recipe_id),
     )
@@ -681,6 +718,86 @@ def remove_favorite(recipe_id):
     db.commit()
     flash("Removed from your favorites.", "info")
     return redirect_back(url_for("recipe_details", recipe_id=recipe_id))
+
+
+@app.route("/recipes/<int:recipe_id>/review", methods=["POST"])
+@login_required
+def add_review(recipe_id):
+    """
+    Save the user's star rating + comment for a recipe.
+    Each user has at most one review and one rating per recipe;
+    submitting again simply updates them.
+    """
+    recipe = get_recipe_or_404(recipe_id)
+    details_url = url_for("recipe_details", recipe_id=recipe_id) + "#reviews"
+
+    if user_owns_recipe(recipe):
+        flash("You cannot review your own recipe.", "error")
+        return redirect(details_url)
+
+    comment = request.form.get("comment", "").strip()
+    rating_text = request.form.get("rating", "")
+    errors = []
+
+    rating = None
+    if not rating_text:
+        errors.append("Please choose a star rating.")
+    else:
+        rating = parse_whole_number(rating_text, "Rating", MIN_RATING, MAX_RATING, errors)
+
+    if not comment:
+        errors.append("Please write a comment.")
+    elif len(comment) > MAX_COMMENT_LENGTH:
+        errors.append(f"Comments must be at most {MAX_COMMENT_LENGTH} characters.")
+
+    if errors:
+        for error in errors:
+            flash(error, "error")
+        return redirect(details_url)
+
+    db = get_db()
+    already_reviewed = db.execute(
+        "SELECT 1 FROM reviews WHERE user_id = ? AND recipe_id = ?",
+        (g.user["id"], recipe_id),
+    ).fetchone()
+
+    # "ON CONFLICT ... DO UPDATE" = insert a new row, or update the existing one
+    # if this user already reviewed/rated this recipe (an "upsert").
+    db.execute(
+        """
+        INSERT INTO ratings (user_id, recipe_id, rating) VALUES (?, ?, ?)
+        ON CONFLICT (user_id, recipe_id)
+        DO UPDATE SET rating = excluded.rating, created_at = CURRENT_TIMESTAMP
+        """,
+        (g.user["id"], recipe_id, rating),
+    )
+    db.execute(
+        """
+        INSERT INTO reviews (user_id, recipe_id, comment) VALUES (?, ?, ?)
+        ON CONFLICT (user_id, recipe_id)
+        DO UPDATE SET comment = excluded.comment, created_at = CURRENT_TIMESTAMP
+        """,
+        (g.user["id"], recipe_id, comment),
+    )
+    db.commit()
+
+    if already_reviewed:
+        flash("Your review was updated.", "success")
+    else:
+        flash("Thanks for your review!", "success")
+    return redirect(details_url)
+
+
+@app.route("/recipes/<int:recipe_id>/review/delete", methods=["POST"])
+@login_required
+def delete_review(recipe_id):
+    """Delete the logged-in user's own review and rating for a recipe."""
+    db = get_db()
+    db.execute("DELETE FROM reviews WHERE user_id = ? AND recipe_id = ?", (g.user["id"], recipe_id))
+    db.execute("DELETE FROM ratings WHERE user_id = ? AND recipe_id = ?", (g.user["id"], recipe_id))
+    db.commit()
+    flash("Your review was deleted.", "info")
+    return redirect(url_for("recipe_details", recipe_id=recipe_id) + "#reviews")
 
 
 @app.route("/favorites")

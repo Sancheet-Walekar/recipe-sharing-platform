@@ -11,7 +11,26 @@ document.addEventListener("DOMContentLoaded", function () {
     setupConfirmForms();
     setupImagePreview();
     setupFilterAutoSubmit();
+    setupStarRating();
 });
+
+
+/* ---------- Review form: show a word for the chosen star rating ---------- */
+function setupStarRating() {
+    const starBox = document.querySelector(".star-input");
+    if (!starBox) {
+        return;
+    }
+
+    const text = starBox.querySelector(".star-input-text");
+    const words = { 1: "Poor", 2: "Fair", 3: "Good", 4: "Very good", 5: "Excellent" };
+
+    starBox.querySelectorAll("input[name='rating']").forEach(function (radio) {
+        radio.addEventListener("change", function () {
+            text.textContent = radio.value + " out of 5 - " + words[radio.value];
+        });
+    });
+}
 
 
 /* ---------- Recipes page: apply a filter as soon as it changes ---------- */

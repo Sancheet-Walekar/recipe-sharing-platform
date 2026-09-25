@@ -780,6 +780,196 @@ h1, h2, h3 {
     font-weight: 700;
 }
 
+/* ---------- 12a-2. Stars, ratings and reviews ---------- */
+.stars {
+    display: inline-flex;
+    letter-spacing: 1px;
+    line-height: 1;
+}
+
+.star {
+    color: #ddd3c7;
+}
+
+.star.filled {
+    color: var(--color-star);
+}
+
+.card-rating {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.88rem;
+    color: var(--color-gray);
+    margin-bottom: 8px;
+}
+
+.no-rating {
+    font-style: italic;
+}
+
+.rating-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    color: var(--color-dark);
+    text-decoration: none;
+    font-size: 1.05rem;
+}
+
+.rating-summary .stars {
+    font-size: 1.3rem;
+}
+
+.rating-summary span {
+    color: var(--color-gray);
+}
+
+.reviews {
+    margin-top: 56px;
+}
+
+.reviews h2 {
+    font-size: 1.6rem;
+}
+
+.reviews-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 32px;
+    align-items: start;
+}
+
+.review-form-card {
+    background: var(--color-cream);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 24px;
+}
+
+.review-form-card h3 {
+    margin-bottom: 12px;
+}
+
+/* Clickable star picker (radio buttons styled as stars) */
+.star-input {
+    border: none;
+    padding: 0;
+    margin: 0 0 16px;
+}
+
+.star-input legend {
+    font-weight: 600;
+    margin-bottom: 4px;
+    padding: 0;
+}
+
+.star-input-stars {
+    display: inline-flex;
+    flex-direction: row-reverse;   /* HTML order is 5..1, shown as 1..5 */
+}
+
+/* Hide the round radio circles but keep them usable with the keyboard */
+.star-input-stars input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.star-input-stars label {
+    font-size: 2rem;
+    color: #ddd3c7;
+    cursor: pointer;
+    padding: 0 2px;
+    transition: color 0.15s, transform 0.15s;
+}
+
+/* Colour the checked star and every star before it (and on hover) */
+.star-input-stars input:checked ~ label,
+.star-input-stars label:hover,
+.star-input-stars label:hover ~ label {
+    color: var(--color-star);
+}
+
+.star-input-stars label:hover {
+    transform: scale(1.15);
+}
+
+.star-input-stars input:focus-visible + label {
+    outline: 2px solid var(--color-primary);
+    border-radius: 4px;
+}
+
+.star-input-text {
+    margin-left: 10px;
+    color: var(--color-gray);
+    font-size: 0.95rem;
+}
+
+.delete-review-form {
+    margin-top: 12px;
+}
+
+/* A button that looks like a text link */
+.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-error);
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+}
+
+.review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.review {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+}
+
+.review-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.review-header div {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.review-header small {
+    color: var(--color-gray);
+}
+
+.review-avatar {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-white);
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.review p {
+    margin: 12px 0 0;
+    white-space: pre-line;   /* keep line breaks the reviewer typed */
+}
+
 /* ---------- 12b. Forms (register, login, add/edit recipe) ---------- */
 .auth-section {
     background: var(--color-cream);

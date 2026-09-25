@@ -25,6 +25,18 @@
                     {% endif %}
                 </p>
 
+                <!-- Average rating (calculated in SQL with AVG) -->
+                <a href="#reviews" class="rating-summary">
+                    {% if recipe.rating_count %}
+                        {% with stars = recipe.avg_rating %}{% include "_stars.html" %}{% endwith %}
+                        <strong>{{ recipe.avg_rating }}</strong>
+                        <span>({{ recipe.rating_count }} rating{{ '' if recipe.rating_count == 1 else 's' }})</span>
+                    {% else %}
+                        {% with stars = 0 %}{% include "_stars.html" %}{% endwith %}
+                        <span>No ratings yet</span>
+                    {% endif %}
+                </a>
+
                 <p class="recipe-summary">{{ recipe.description }}</p>
 
                 <!-- Quick facts -->
@@ -85,6 +97,84 @@
                         <li>{{ line.strip() }}</li>
                     {% endfor %}
                 </ol>
+            </div>
+        </div>
+
+        <!-- ===================== REVIEWS ===================== -->
+        <div id="reviews" class="reviews">
+            <h2>Reviews ({{ reviews | length }})</h2>
+
+            <div class="reviews-layout">
+                <!-- Left: write / update a review -->
+                <div class="review-form-card">
+                    {% if not current_user %}
+                        <h3>Share your thoughts</h3>
+                        <p>Please <a href="{{ url_for('login', next=request.path) }}">log in</a> to rate and review this recipe.</p>
+
+                    {% elif is_owner %}
+                        <h3>This is your recipe</h3>
+                        <p>You cannot review your own recipe, but you can read what others think.</p>
+
+                    {% else %}
+                        <h3>{{ 'Update your review' if my_review else 'Write a review' }}</h3>
+                        <form action="{{ url_for('add_review', recipe_id=recipe.id) }}" method="post" class="form">
+                            <fieldset class="star-input">
+                                <legend>Your rating</legend>
+                                <!-- Stars are written 5 to 1; CSS shows them 1 to 5 (row-reverse)
+                                     so hovering a star can highlight all stars to its left. -->
+                                <div class="star-input-stars">
+                                    {% for value in range(5, 0, -1) %}
+                                        <input type="radio" id="star{{ value }}" name="rating" value="{{ value }}"
+                                               {{ 'checked' if my_review and my_review.rating == value }} required>
+                                        <label for="star{{ value }}" title="{{ value }} star{{ 's' if value > 1 }}">&#9733;</label>
+                                    {% endfor %}
+                                </div>
+                                <span class="star-input-text">
+                                    {{ my_review.rating ~ ' out of 5' if my_review and my_review.rating else 'Click a star' }}
+                                </span>
+                            </fieldset>
+
+                            <div class="form-group">
+                                <label for="comment">Your comment</label>
+                                <textarea id="comment" name="comment" rows="4" maxlength="1000" required
+                                          placeholder="How did it turn out? Any tips?">{{ my_review.comment if my_review else '' }}</textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">
+                                {{ 'Update review' if my_review else 'Submit review' }}
+                            </button>
+                        </form>
+
+                        {% if my_review %}
+                            <form action="{{ url_for('delete_review', recipe_id=recipe.id) }}" method="post"
+                                  class="delete-review-form" data-confirm="Delete your review?">
+                                <button type="submit" class="link-button">Delete my review</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                </div>
+
+                <!-- Right: list of reviews -->
+                <div class="review-list">
+                    {% for review in reviews %}
+                        <article class="review">
+                            <div class="review-header">
+                                <span class="review-avatar">{{ review.reviewer_name[0] | upper }}</span>
+                                <div>
+                                    <strong>{{ review.reviewer_name }}</strong>
+                                    <small>{{ review.created_at | nice_date }}</small>
+                                </div>
+                                {% with stars = review.rating %}{% include "_stars.html" %}{% endwith %}
+                            </div>
+                            <p>{{ review.comment }}</p>
+                        </article>
+                    {% else %}
+                        <div class="empty-state">
+                            <h3>No reviews yet</h3>
+                            <p>Be the first to tell others what you think.</p>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
 

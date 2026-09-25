@@ -16,6 +16,16 @@
             </div>
 
             <h3>{{ recipe.title }}</h3>
+
+            <div class="card-rating">
+                {% if recipe.rating_count %}
+                    {% with stars = recipe.avg_rating %}{% include "_stars.html" %}{% endwith %}
+                    <span>{{ recipe.avg_rating }} ({{ recipe.rating_count }})</span>
+                {% else %}
+                    <span class="no-rating">No ratings yet</span>
+                {% endif %}
+            </div>
+
             <p class="recipe-description">{{ recipe.description | truncate(100) }}</p>
 
             <div class="recipe-card-footer">

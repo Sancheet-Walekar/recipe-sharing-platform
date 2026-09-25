@@ -330,8 +330,49 @@ def index():
 
 @app.route("/recipes")
 def recipes():
-    """List of all recipes from the database."""
-    return render_template("recipes.html", recipes=fetch_recipes())
+    """
+    List recipes, optionally filtered. Examples:
+        /recipes?q=pasta
+        /recipes?q=pasta&category=Italian&difficulty=Easy
+    """
+    search_text = request.args.get("q", "").strip()
+    category = request.args.get("category", "")
+    difficulty = request.args.get("difficulty", "")
+
+    conditions = []
+    params = []
+
+    if search_text:
+        # "%pasta%" means: "pasta" anywhere in the text. The value goes into
+        # params (never into the SQL string), so it is safe from SQL injection.
+        like_pattern = f"%{search_text}%"
+        conditions.append(
+            "(recipes.title LIKE ? OR recipes.description LIKE ?"
+            " OR recipes.category LIKE ? OR recipes.ingredients LIKE ?)"
+        )
+        params.extend([like_pattern] * 4)
+
+    # Unknown values (e.g. ?category=abc) are simply ignored
+    if category in CATEGORIES:
+        conditions.append("recipes.category = ?")
+        params.append(category)
+    else:
+        category = ""
+
+    if difficulty in DIFFICULTIES:
+        conditions.append("recipes.difficulty = ?")
+        params.append(difficulty)
+    else:
+        difficulty = ""
+
+    return render_template(
+        "recipes.html",
+        recipes=fetch_recipes(conditions, params),
+        search_text=search_text,
+        selected_category=category,
+        selected_difficulty=difficulty,
+        filters_active=bool(search_text or category or difficulty),
+    )
 
 
 @app.route("/recipes/<int:recipe_id>")

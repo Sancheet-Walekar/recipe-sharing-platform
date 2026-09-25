@@ -10,7 +10,21 @@ document.addEventListener("DOMContentLoaded", function () {
     setupFlashMessages();
     setupConfirmForms();
     setupImagePreview();
+    setupFilterAutoSubmit();
 });
+
+
+/* ---------- Recipes page: apply a filter as soon as it changes ---------- */
+// The Search button still works without JavaScript; this just saves a click.
+function setupFilterAutoSubmit() {
+    const selects = document.querySelectorAll("#filter-form .auto-submit");
+
+    selects.forEach(function (select) {
+        select.addEventListener("change", function () {
+            select.form.submit();
+        });
+    });
+}
 
 
 /* ---------- Recipe photo: preview + quick size/type check ---------- */

@@ -7,11 +7,46 @@
     <div class="container">
         <h1>All Recipes</h1>
         <p>Browse dishes shared by the RecipeShare community.</p>
+
+        <!-- ===================== SEARCH + FILTERS ===================== -->
+        <!-- method="get" puts the choices in the URL, e.g. /recipes?q=pasta&category=Italian -->
+        <form class="filter-bar" action="{{ url_for('recipes') }}" method="get" id="filter-form">
+            <input type="search" name="q" value="{{ search_text }}"
+                   placeholder="Search by title, description, category or ingredient"
+                   aria-label="Search recipes" class="filter-search">
+
+            <select name="category" aria-label="Filter by category" class="auto-submit">
+                <option value="">All categories</option>
+                {% for category in categories %}
+                    <option value="{{ category }}" {{ 'selected' if category == selected_category }}>{{ category }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="difficulty" aria-label="Filter by difficulty" class="auto-submit">
+                <option value="">All difficulties</option>
+                {% for difficulty in difficulties %}
+                    <option value="{{ difficulty }}" {{ 'selected' if difficulty == selected_difficulty }}>{{ difficulty }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if filters_active %}
+                <a href="{{ url_for('recipes') }}" class="btn btn-outline">Clear</a>
+            {% endif %}
+        </form>
     </div>
 </section>
 
 <section class="section">
     <div class="container">
+        <!-- How many recipes matched -->
+        <p class="results-count">
+            {{ recipes | length }} recipe{{ '' if recipes | length == 1 else 's' }} found
+            {% if search_text %} for "<strong>{{ search_text }}</strong>"{% endif %}
+            {% if selected_category %} in <strong>{{ selected_category }}</strong>{% endif %}
+            {% if selected_difficulty %} &middot; <strong>{{ selected_difficulty }}</strong>{% endif %}
+        </p>
+
         {% if recipes %}
             <div class="recipe-grid">
                 {% for recipe in recipes %}
@@ -21,7 +56,12 @@
         {% else %}
             <div class="empty-state">
                 <h3>No recipes found</h3>
-                <p>Recipes will appear here once they are added.</p>
+                {% if filters_active %}
+                    <p>Try a different search word or remove some filters.</p>
+                    <a href="{{ url_for('recipes') }}" class="btn btn-outline">Show all recipes</a>
+                {% else %}
+                    <p>No one has shared a recipe yet. Be the first!</p>
+                {% endif %}
             </div>
         {% endif %}
     </div>

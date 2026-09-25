@@ -57,6 +57,27 @@
 </div>
 
 <div class="form-group">
+    <label for="image">Recipe photo <span class="optional">(optional)</span></label>
+
+    {# On the edit page "recipe" exists; show its current photo #}
+    {% if recipe is defined and recipe.image %}
+        <div class="current-image">
+            <img src="{{ recipe_image_url(recipe.image) }}" alt="Current photo of {{ recipe.title }}">
+            <label class="checkbox-label">
+                <input type="checkbox" name="remove_image" value="yes">
+                Remove current photo
+            </label>
+        </div>
+    {% endif %}
+
+    <!-- data-max-mb is read by script.js to warn about big files before uploading -->
+    <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp"
+           data-max-mb="2" class="image-input">
+    <small class="form-hint">JPG, JPEG, PNG or WEBP, up to 2 MB. Uploading a new photo replaces the old one.</small>
+    <img class="image-preview" alt="Preview of the selected photo" hidden>
+</div>
+
+<div class="form-group">
     <label for="ingredients">Ingredients</label>
     <textarea id="ingredients" name="ingredients" rows="7" maxlength="5000" required
               placeholder="One ingredient per line, e.g.&#10;200 g pasta&#10;2 tomatoes">{{ form.get('ingredients', '') }}</textarea>

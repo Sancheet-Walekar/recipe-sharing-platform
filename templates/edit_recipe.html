@@ -13,7 +13,8 @@
 <section class="section">
     <div class="container">
         <div class="form-card">
-            <form method="post" action="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="form">
+            <!-- enctype="multipart/form-data" is required for file uploads -->
+            <form method="post" action="{{ url_for('edit_recipe', recipe_id=recipe.id) }}" class="form" enctype="multipart/form-data">
                 {% include "_recipe_form_fields.html" %}
 
                 <div class="form-actions">

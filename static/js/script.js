@@ -9,7 +9,52 @@
 document.addEventListener("DOMContentLoaded", function () {
     setupFlashMessages();
     setupConfirmForms();
+    setupImagePreview();
 });
+
+
+/* ---------- Recipe photo: preview + quick size/type check ---------- */
+function setupImagePreview() {
+    const input = document.querySelector(".image-input");
+    if (!input) {
+        return; // this page has no image upload field
+    }
+
+    const preview = input.parentElement.querySelector(".image-preview");
+    const maxMegabytes = Number(input.dataset.maxMb) || 2;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+    // A small red message under the field (created once, reused)
+    const message = document.createElement("small");
+    message.className = "field-error";
+    input.insertAdjacentElement("afterend", message);
+
+    input.addEventListener("change", function () {
+        const file = input.files[0];
+        message.textContent = "";
+        preview.hidden = true;
+
+        if (!file) {
+            return;
+        }
+
+        if (!allowedTypes.includes(file.type)) {
+            message.textContent = "Please choose a JPG, PNG or WEBP image.";
+            input.value = "";
+            return;
+        }
+
+        if (file.size > maxMegabytes * 1024 * 1024) {
+            message.textContent = "This image is larger than " + maxMegabytes + " MB. Please choose a smaller one.";
+            input.value = "";
+            return;
+        }
+
+        // Show the chosen picture before it is uploaded
+        preview.src = URL.createObjectURL(file);
+        preview.hidden = false;
+    });
+}
 
 
 /* ---------- "Are you sure?" before dangerous actions ---------- */

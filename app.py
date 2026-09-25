@@ -8,13 +8,16 @@ Then open http://127.0.0.1:5000 in your browser.
 
 import os
 import re
+import uuid
 from datetime import datetime
 from functools import wraps
 
 from flask import (
     Flask, abort, flash, g, redirect, render_template, request, session, url_for,
 )
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.utils import secure_filename
 
 from database import close_db, create_tables, get_db
 
@@ -55,6 +58,14 @@ MAX_MINUTES = 1440               # 24 hours
 MAX_SERVINGS = 100
 
 LATEST_RECIPES_ON_HOME = 6
+
+# Image uploads are stored on this computer, inside static/uploads/recipes/
+UPLOAD_FOLDER = os.path.join(app.root_path, "static", "uploads", "recipes")
+ALLOWED_IMAGE_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+MAX_UPLOAD_MB = 2
+# Flask rejects any request bigger than this (error 413, handled below)
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_MB * 1024 * 1024
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 def recipe_image_url(image_filename):
@@ -195,6 +206,67 @@ def validate_recipe_form(form):
             recipe_data[field] = number
 
     return recipe_data, errors
+
+
+# ------------------------------------------------------------------
+# Image upload helpers
+# ------------------------------------------------------------------
+def get_file_extension(filename):
+    """'My Photo.JPG' -> 'jpg'. secure_filename() first removes dangerous
+    characters such as '../' so nothing outside our folder can be targeted."""
+    safe_name = secure_filename(filename or "")
+    if "." not in safe_name:
+        return ""
+    return safe_name.rsplit(".", 1)[1].lower()
+
+
+def file_looks_like_image(file_storage):
+    """
+    Check the first bytes of the file ("magic numbers"). This stops someone
+    from renaming e.g. a .exe file to .jpg and uploading it.
+    """
+    header = file_storage.stream.read(12)
+    file_storage.stream.seek(0)  # rewind so the file can still be saved
+    is_jpeg = header.startswith(b"\xff\xd8\xff")
+    is_png = header.startswith(b"\x89PNG\r\n\x1a\n")
+    is_webp = header[:4] == b"RIFF" and header[8:12] == b"WEBP"
+    return is_jpeg or is_png or is_webp
+
+
+def check_image_upload(file_storage):
+    """Return an error message if the uploaded file is not allowed, otherwise None.
+    No file at all is fine - the image is optional."""
+    if file_storage is None or file_storage.filename == "":
+        return None
+    if get_file_extension(file_storage.filename) not in ALLOWED_IMAGE_EXTENSIONS:
+        return "Image must be a JPG, JPEG, PNG or WEBP file."
+    if not file_looks_like_image(file_storage):
+        return "The uploaded file is not a valid image."
+    return None
+
+
+def save_recipe_image(file_storage):
+    """
+    Save an uploaded image and return its new file name (or None if no file).
+    We invent a random name (e.g. '3f2a...9c.jpg') so that users can never
+    overwrite each other's files or choose a dangerous file name.
+    """
+    if file_storage is None or file_storage.filename == "":
+        return None
+    extension = get_file_extension(file_storage.filename)
+    new_filename = f"{uuid.uuid4().hex}.{extension}"
+    file_storage.save(os.path.join(UPLOAD_FOLDER, new_filename))
+    return new_filename
+
+
+def delete_recipe_image(filename):
+    """Remove an image file from the uploads folder (if it exists)."""
+    if not filename:
+        return
+    # basename() keeps only the file name part, so paths like '../x' are ignored
+    file_path = os.path.join(UPLOAD_FOLDER, os.path.basename(filename))
+    if os.path.isfile(file_path):
+        os.remove(file_path)
 
 
 # ------------------------------------------------------------------
@@ -390,23 +462,32 @@ def add_recipe():
     if request.method == "POST":
         recipe_data, errors = validate_recipe_form(request.form)
 
+        image_file = request.files.get("image")
+        image_error = check_image_upload(image_file)
+        if image_error:
+            errors.append(image_error)
+
         if errors:
             for error in errors:
                 flash(error, "error")
             return render_template("add_recipe.html", form=recipe_data)
 
+        # Only save the image once we know the whole form is valid
+        image_filename = save_recipe_image(image_file)
+
         db = get_db()
         cursor = db.execute(
             """
             INSERT INTO recipes (user_id, title, description, ingredients, instructions,
-                                 category, difficulty, prep_time, cook_time, servings)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 category, difficulty, prep_time, cook_time, servings, image)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 g.user["id"], recipe_data["title"], recipe_data["description"],
                 recipe_data["ingredients"], recipe_data["instructions"],
                 recipe_data["category"], recipe_data["difficulty"],
                 recipe_data["prep_time"], recipe_data["cook_time"], recipe_data["servings"],
+                image_filename,
             ),
         )
         db.commit()
@@ -434,10 +515,24 @@ def edit_recipe(recipe_id):
     if request.method == "POST":
         recipe_data, errors = validate_recipe_form(request.form)
 
+        image_file = request.files.get("image")
+        image_error = check_image_upload(image_file)
+        if image_error:
+            errors.append(image_error)
+
         if errors:
             for error in errors:
                 flash(error, "error")
             return render_template("edit_recipe.html", recipe=recipe, form=recipe_data)
+
+        # Work out which image the recipe should have after saving
+        old_image = recipe["image"]
+        new_image = old_image
+        uploaded_image = save_recipe_image(image_file)
+        if uploaded_image:
+            new_image = uploaded_image                 # a new photo replaces the old one
+        elif request.form.get("remove_image") == "yes":
+            new_image = None                           # user ticked "Remove current image"
 
         db = get_db()
         db.execute(
@@ -445,7 +540,7 @@ def edit_recipe(recipe_id):
             UPDATE recipes
             SET title = ?, description = ?, ingredients = ?, instructions = ?,
                 category = ?, difficulty = ?, prep_time = ?, cook_time = ?, servings = ?,
-                updated_at = CURRENT_TIMESTAMP
+                image = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ? AND user_id = ?
             """,
             (
@@ -453,10 +548,15 @@ def edit_recipe(recipe_id):
                 recipe_data["ingredients"], recipe_data["instructions"],
                 recipe_data["category"], recipe_data["difficulty"],
                 recipe_data["prep_time"], recipe_data["cook_time"], recipe_data["servings"],
-                recipe_id, g.user["id"],
+                new_image, recipe_id, g.user["id"],
             ),
         )
         db.commit()
+
+        # Delete the old file from disk if it is no longer used
+        if old_image and old_image != new_image:
+            delete_recipe_image(old_image)
+
         flash("Recipe updated successfully!", "success")
         return redirect(url_for("recipe_details", recipe_id=recipe_id))
 
@@ -478,6 +578,7 @@ def delete_recipe(recipe_id):
     db = get_db()
     db.execute("DELETE FROM recipes WHERE id = ? AND user_id = ?", (recipe_id, g.user["id"]))
     db.commit()
+    delete_recipe_image(recipe["image"])
     flash(f'Recipe "{recipe["title"]}" was deleted.', "success")
     return redirect(url_for("recipes"))
 
@@ -489,6 +590,13 @@ def delete_recipe(recipe_id):
 def page_not_found(error):
     """Show a friendly page when a URL does not exist."""
     return render_template("404.html"), 404
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def file_too_large(error):
+    """Runs when an upload is bigger than MAX_CONTENT_LENGTH (error 413)."""
+    flash(f"That image is too large. The maximum size is {MAX_UPLOAD_MB} MB.", "error")
+    return redirect(request.url)
 
 
 # ------------------------------------------------------------------

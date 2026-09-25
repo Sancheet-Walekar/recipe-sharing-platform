@@ -8,10 +8,11 @@ Then open http://127.0.0.1:5000 in your browser.
 
 import os
 import re
+from datetime import datetime
 from functools import wraps
 
 from flask import (
-    Flask, flash, g, redirect, render_template, request, session, url_for,
+    Flask, abort, flash, g, redirect, render_template, request, session, url_for,
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -53,6 +54,15 @@ MAX_LONG_TEXT_LENGTH = 5000      # ingredients and instructions
 MAX_MINUTES = 1440               # 24 hours
 MAX_SERVINGS = 100
 
+LATEST_RECIPES_ON_HOME = 6
+
+
+def recipe_image_url(image_filename):
+    """Return the URL of a recipe photo, or of the placeholder if there is none."""
+    if image_filename:
+        return url_for("static", filename=f"uploads/recipes/{image_filename}")
+    return url_for("static", filename="images/placeholder.svg")
+
 
 @app.context_processor
 def inject_globals():
@@ -61,7 +71,19 @@ def inject_globals():
         "categories": CATEGORIES,
         "difficulties": DIFFICULTIES,
         "current_user": g.get("user"),
+        "recipe_image_url": recipe_image_url,
     }
+
+
+@app.template_filter("nice_date")
+def nice_date(value):
+    """Jinja filter: turn '2026-09-25 06:38:04' into '25 Sep 2026'."""
+    if not value:
+        return ""
+    try:
+        return datetime.strptime(str(value)[:19], "%Y-%m-%d %H:%M:%S").strftime("%d %b %Y")
+    except ValueError:
+        return value
 
 
 # ------------------------------------------------------------------
@@ -176,18 +198,71 @@ def validate_recipe_form(form):
 
 
 # ------------------------------------------------------------------
+# Database query helpers for recipes
+# ------------------------------------------------------------------
+# Every recipe list needs the same columns: the recipe itself plus the
+# author's name. Keeping the SQL in one place avoids copy-pasting it.
+RECIPE_LIST_SQL = """
+    SELECT recipes.*,
+           users.name AS author_name
+    FROM recipes
+    JOIN users ON users.id = recipes.user_id
+"""
+
+
+def fetch_recipes(conditions=None, params=(), limit=None):
+    """
+    Return a list of recipes (newest first).
+
+    conditions: list of SQL snippets written by US, e.g. ["recipes.category = ?"]
+    params:     the user-provided values that replace each "?" safely
+    limit:      maximum number of recipes to return (None = all)
+
+    User input is NEVER pasted into the SQL text - it only goes into "params".
+    """
+    sql = RECIPE_LIST_SQL
+    params = list(params)
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += " ORDER BY recipes.created_at DESC, recipes.id DESC"
+    if limit:
+        sql += " LIMIT ?"
+        params.append(limit)
+    return get_db().execute(sql, params).fetchall()
+
+
+def get_recipe_or_404(recipe_id):
+    """Load one recipe (with author name) or show the 404 page if it does not exist."""
+    recipe = get_db().execute(
+        RECIPE_LIST_SQL + " WHERE recipes.id = ?", (recipe_id,)
+    ).fetchone()
+    if recipe is None:
+        abort(404)
+    return recipe
+
+
+# ------------------------------------------------------------------
 # Routes
 # ------------------------------------------------------------------
 @app.route("/")
 def index():
-    """Home page."""
-    return render_template("index.html", latest_recipes=[])
+    """Home page with the newest recipes."""
+    latest_recipes = fetch_recipes(limit=LATEST_RECIPES_ON_HOME)
+    return render_template("index.html", latest_recipes=latest_recipes)
 
 
 @app.route("/recipes")
 def recipes():
-    """List of all recipes (connected to the database in a later stage)."""
-    return render_template("recipes.html", recipes=[])
+    """List of all recipes from the database."""
+    return render_template("recipes.html", recipes=fetch_recipes())
+
+
+@app.route("/recipes/<int:recipe_id>")
+def recipe_details(recipe_id):
+    """Full page for a single recipe."""
+    recipe = get_recipe_or_404(recipe_id)
+    is_owner = g.user is not None and g.user["id"] == recipe["user_id"]
+    return render_template("recipe_details.html", recipe=recipe, is_owner=is_owner)
 
 
 # ------------------------------------------------------------------
@@ -315,7 +390,7 @@ def add_recipe():
             return render_template("add_recipe.html", form=recipe_data)
 
         db = get_db()
-        db.execute(
+        cursor = db.execute(
             """
             INSERT INTO recipes (user_id, title, description, ingredients, instructions,
                                  category, difficulty, prep_time, cook_time, servings)
@@ -330,7 +405,8 @@ def add_recipe():
         )
         db.commit()
         flash("Recipe added successfully!", "success")
-        return redirect(url_for("recipes"))
+        # cursor.lastrowid is the id SQLite gave to the new recipe
+        return redirect(url_for("recipe_details", recipe_id=cursor.lastrowid))
 
     return render_template("add_recipe.html", form={})
 

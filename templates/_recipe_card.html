@@ -4,12 +4,26 @@
     so the variable "recipe" is always available here.
 #}
 <article class="recipe-card">
-    <div class="recipe-card-body">
-        <div class="recipe-meta">
-            <span class="badge">{{ recipe.category }}</span>
-            <span class="badge badge-{{ recipe.difficulty | lower }}">{{ recipe.difficulty }}</span>
+    <!-- The whole card is one link to the details page -->
+    <a href="{{ url_for('recipe_details', recipe_id=recipe.id) }}" class="recipe-card-link">
+        <img src="{{ recipe_image_url(recipe.image) }}" alt="{{ recipe.title }}"
+             class="recipe-card-image" loading="lazy">
+
+        <div class="recipe-card-body">
+            <div class="recipe-meta">
+                <span class="badge">{{ recipe.category }}</span>
+                <span class="badge badge-{{ recipe.difficulty | lower }}">{{ recipe.difficulty }}</span>
+            </div>
+
+            <h3>{{ recipe.title }}</h3>
+            <p class="recipe-description">{{ recipe.description | truncate(100) }}</p>
+
+            <div class="recipe-card-footer">
+                <span>By {{ recipe.author_name }}</span>
+                <span title="Prep {{ recipe.prep_time }} min + Cook {{ recipe.cook_time }} min">
+                    {{ recipe.prep_time + recipe.cook_time }} min
+                </span>
+            </div>
         </div>
-        <h3>{{ recipe.title }}</h3>
-        <p class="recipe-description">{{ recipe.description | truncate(100) }}</p>
-    </div>
+    </a>
 </article>

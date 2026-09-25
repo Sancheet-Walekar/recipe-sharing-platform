@@ -553,7 +553,151 @@ h1, h2, h3 {
     font-size: 0.9rem;
 }
 
-/* ---------- 12. Forms (register, login, add/edit recipe) ---------- */
+/* ---------- 12a. Recipe details page ---------- */
+.recipe-hero {
+    display: grid;
+    grid-template-columns: 1.1fr 1fr;
+    gap: 40px;
+    align-items: start;
+}
+
+.recipe-hero-image {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    background: var(--color-cream);
+}
+
+.recipe-hero-info h1 {
+    font-size: 2.3rem;
+    margin: 12px 0 6px;
+}
+
+.recipe-meta a.badge {
+    text-decoration: none;
+}
+
+.recipe-author {
+    color: var(--color-gray);
+    margin: 0 0 16px;
+}
+
+.recipe-summary {
+    font-size: 1.08rem;
+    margin: 0 0 20px;
+}
+
+/* The four "quick fact" boxes (prep, cook, total, servings) */
+.recipe-facts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+}
+
+.recipe-facts li {
+    background: var(--color-cream);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-small);
+    padding: 10px;
+    text-align: center;
+}
+
+.recipe-facts span {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--color-gray);
+}
+
+.recipe-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.recipe-actions form {
+    margin: 0;
+}
+
+.recipe-content {
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 32px;
+    margin-top: 48px;
+}
+
+.recipe-panel {
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 28px;
+}
+
+.recipe-panel h2 {
+    font-size: 1.4rem;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--color-primary-light);
+}
+
+.ingredient-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.ingredient-list li {
+    padding: 8px 0 8px 28px;
+    border-bottom: 1px dashed var(--color-border);
+    position: relative;
+}
+
+/* Orange dot in front of each ingredient */
+.ingredient-list li::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 17px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--color-primary);
+}
+
+.instruction-list {
+    padding-left: 0;
+    margin: 0;
+    list-style: none;
+    counter-reset: step;
+}
+
+/* Big orange step numbers built with a CSS counter */
+.instruction-list li {
+    counter-increment: step;
+    position: relative;
+    padding: 4px 0 16px 50px;
+}
+
+.instruction-list li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: var(--color-primary);
+    color: var(--color-white);
+    font-weight: 700;
+}
+
+/* ---------- 12b. Forms (register, login, add/edit recipe) ---------- */
 .auth-section {
     background: var(--color-cream);
 }

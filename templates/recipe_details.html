@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.title }}{% endblock %}
+
+{% block content %}
+<section class="section">
+    <div class="container">
+
+        <!-- ===================== TOP: IMAGE + SUMMARY ===================== -->
+        <div class="recipe-hero">
+            <img src="{{ recipe_image_url(recipe.image) }}" alt="{{ recipe.title }}" class="recipe-hero-image">
+
+            <div class="recipe-hero-info">
+                <div class="recipe-meta">
+                    <a class="badge" href="{{ url_for('recipes', category=recipe.category) }}">{{ recipe.category }}</a>
+                    <span class="badge badge-{{ recipe.difficulty | lower }}">{{ recipe.difficulty }}</span>
+                </div>
+
+                <h1>{{ recipe.title }}</h1>
+                <p class="recipe-author">
+                    By <strong>{{ recipe.author_name }}</strong>
+                    &middot; Posted {{ recipe.created_at | nice_date }}
+                    {% if recipe.updated_at != recipe.created_at %}
+                        &middot; Updated {{ recipe.updated_at | nice_date }}
+                    {% endif %}
+                </p>
+
+                <p class="recipe-summary">{{ recipe.description }}</p>
+
+                <!-- Quick facts -->
+                <ul class="recipe-facts">
+                    <li><span>Prep time</span><strong>{{ recipe.prep_time }} min</strong></li>
+                    <li><span>Cook time</span><strong>{{ recipe.cook_time }} min</strong></li>
+                    <li><span>Total</span><strong>{{ recipe.prep_time + recipe.cook_time }} min</strong></li>
+                    <li><span>Servings</span><strong>{{ recipe.servings }}</strong></li>
+                </ul>
+
+                <!-- Action buttons -->
+                <div class="recipe-actions">
+                    <a href="{{ url_for('recipes') }}" class="btn btn-outline">Back to recipes</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===================== INGREDIENTS + INSTRUCTIONS ===================== -->
+        <div class="recipe-content">
+            <div class="recipe-panel">
+                <h2>Ingredients</h2>
+                <ul class="ingredient-list">
+                    {# Each line typed in the form becomes one list item #}
+                    {% for line in recipe.ingredients.splitlines() if line.strip() %}
+                        <li>{{ line.strip() }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="recipe-panel">
+                <h2>Instructions</h2>
+                <ol class="instruction-list">
+                    {% for line in recipe.instructions.splitlines() if line.strip() %}
+                        <li>{{ line.strip() }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+        </div>
+
+    </div>
+</section>
+{% endblock %}

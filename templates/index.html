@@ -72,8 +72,13 @@
     <div class="container">
         <div class="cta">
             <h2>Have a recipe worth sharing?</h2>
-            <p>Join RecipeShare to post your recipes, save favourites and review dishes.</p>
-            <a href="{{ url_for('recipes') }}" class="btn btn-light">Explore recipes</a>
+            {% if current_user %}
+                <p>Share your favourite dish with the community in just a few minutes.</p>
+                <a href="{{ url_for('add_recipe') }}" class="btn btn-light">Add a recipe</a>
+            {% else %}
+                <p>Join RecipeShare to post your recipes, save favourites and review dishes.</p>
+                <a href="{{ url_for('register') }}" class="btn btn-light">Create a free account</a>
+            {% endif %}
         </div>
     </div>
 </section>

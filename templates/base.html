@@ -21,6 +21,7 @@
             <ul class="nav-links">
                 <li><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Home</a></li>
                 <li><a href="{{ url_for('recipes') }}" class="{{ 'active' if request.endpoint == 'recipes' }}">Recipes</a></li>
+                <li><a href="{{ url_for('register') }}" class="btn btn-primary nav-btn">Register</a></li>
             </ul>
         </nav>
     </header>

@@ -203,6 +203,16 @@ h1, h2, h3 {
     background: var(--color-primary-dark);
 }
 
+.nav-form {
+    margin: 0;
+}
+
+.nav-greeting {
+    color: var(--color-gray);
+    font-size: 0.95rem;
+    padding: 0 6px;
+}
+
 /* ---------- 5. Flash messages ---------- */
 .flash-container {
     margin-top: 20px;

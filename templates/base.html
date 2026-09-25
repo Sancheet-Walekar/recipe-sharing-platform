@@ -21,7 +21,21 @@
             <ul class="nav-links">
                 <li><a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Home</a></li>
                 <li><a href="{{ url_for('recipes') }}" class="{{ 'active' if request.endpoint == 'recipes' }}">Recipes</a></li>
-                <li><a href="{{ url_for('register') }}" class="btn btn-primary nav-btn">Register</a></li>
+
+                {% if current_user %}
+                    <!-- Links for logged-in users -->
+                    <li class="nav-greeting">Hi, {{ current_user.name.split()[0] }}</li>
+                    <li>
+                        <!-- Logout is a POST form so it cannot be triggered by a simple link -->
+                        <form action="{{ url_for('logout') }}" method="post" class="nav-form">
+                            <button type="submit" class="btn nav-btn">Logout</button>
+                        </form>
+                    </li>
+                {% else %}
+                    <!-- Links for guests -->
+                    <li><a href="{{ url_for('login') }}" class="{{ 'active' if request.endpoint == 'login' }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}" class="btn btn-primary nav-btn">Register</a></li>
+                {% endif %}
             </ul>
         </nav>
     </header>

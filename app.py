@@ -8,9 +8,12 @@ Then open http://127.0.0.1:5000 in your browser.
 
 import os
 import re
+from functools import wraps
 
-from flask import Flask, flash, redirect, render_template, request, url_for
-from werkzeug.security import generate_password_hash
+from flask import (
+    Flask, flash, g, redirect, render_template, request, session, url_for,
+)
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import close_db, create_tables, get_db
 
@@ -50,7 +53,49 @@ def inject_globals():
     return {
         "categories": CATEGORIES,
         "difficulties": DIFFICULTIES,
+        "current_user": g.get("user"),
     }
+
+
+# ------------------------------------------------------------------
+# Logged-in user helpers
+# ------------------------------------------------------------------
+@app.before_request
+def load_logged_in_user():
+    """
+    Runs before every request. If the session contains a user id, load that
+    user from the database and keep it in g.user (None for guests).
+    """
+    user_id = session.get("user_id")
+    g.user = None
+    if user_id is not None:
+        g.user = get_db().execute(
+            "SELECT id, name, email, created_at FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+
+
+def login_required(view):
+    """
+    Decorator for pages that need a logged-in user.
+    Usage:
+        @app.route("/secret")
+        @login_required
+        def secret(): ...
+    """
+    @wraps(view)
+    def wrapped_view(*args, **kwargs):
+        if g.user is None:
+            flash("Please log in to continue.", "info")
+            # Remember where the user wanted to go, so we can send them back
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+def is_safe_next_url(target):
+    """Only allow redirects to pages on our own site (e.g. "/recipes/3")."""
+    return bool(target) and target.startswith("/") and not target.startswith("//")
 
 
 # ------------------------------------------------------------------
@@ -74,6 +119,9 @@ def recipes():
 @app.route("/register", methods=["GET", "POST"])
 def register():
     """Show the sign-up form (GET) and create a new account (POST)."""
+    if g.user:
+        return redirect(url_for("index"))
+
     if request.method == "POST":
         # .strip() removes spaces the user may have typed by accident
         name = request.form.get("name", "").strip()
@@ -118,10 +166,60 @@ def register():
             (name, email, generate_password_hash(password)),
         )
         db.commit()
-        flash("Account created successfully! Welcome to RecipeShare.", "success")
-        return redirect(url_for("index"))
+        flash("Account created successfully! Please log in.", "success")
+        return redirect(url_for("login"))
 
     return render_template("register.html")
+
+
+# ------------------------------------------------------------------
+# Authentication: login and logout
+# ------------------------------------------------------------------
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Show the login form (GET) and log the user in (POST)."""
+    if g.user:
+        return redirect(url_for("index"))
+
+    next_url = request.args.get("next", "")
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        next_url = request.form.get("next", "")
+
+        if not email or not password:
+            flash("Please enter both your email and password.", "error")
+            return render_template("login.html", email=email, next_url=next_url)
+
+        user = get_db().execute(
+            "SELECT id, name, password FROM users WHERE email = ?", (email,)
+        ).fetchone()
+
+        # Same message for "unknown email" and "wrong password" so attackers
+        # cannot find out which emails are registered.
+        if user is None or not check_password_hash(user["password"], password):
+            flash("Incorrect email or password.", "error")
+            return render_template("login.html", email=email, next_url=next_url)
+
+        # Start a fresh session that remembers who is logged in
+        session.clear()
+        session["user_id"] = user["id"]
+        flash(f"Welcome back, {user['name']}!", "success")
+
+        if is_safe_next_url(next_url):
+            return redirect(next_url)
+        return redirect(url_for("index"))
+
+    return render_template("login.html", next_url=next_url)
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    """Log out by forgetting everything stored in the session."""
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for("index"))
 
 
 # ------------------------------------------------------------------

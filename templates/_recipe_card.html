@@ -1,0 +1,15 @@
+{#
+    Reusable recipe card.
+    It is included inside a loop:  {% for recipe in ... %}{% include "_recipe_card.html" %}{% endfor %}
+    so the variable "recipe" is always available here.
+#}
+<article class="recipe-card">
+    <div class="recipe-card-body">
+        <div class="recipe-meta">
+            <span class="badge">{{ recipe.category }}</span>
+            <span class="badge badge-{{ recipe.difficulty | lower }}">{{ recipe.difficulty }}</span>
+        </div>
+        <h3>{{ recipe.title }}</h3>
+        <p class="recipe-description">{{ recipe.description | truncate(100) }}</p>
+    </div>
+</article>

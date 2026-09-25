@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}Recipes{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div class="container">
+        <h1>All Recipes</h1>
+        <p>Browse dishes shared by the RecipeShare community.</p>
+    </div>
+</section>
+
+<section class="section">
+    <div class="container">
+        {% if recipes %}
+            <div class="recipe-grid">
+                {% for recipe in recipes %}
+                    {% include "_recipe_card.html" %}
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No recipes found</h3>
+                <p>Recipes will appear here once they are added.</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

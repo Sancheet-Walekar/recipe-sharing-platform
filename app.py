@@ -8,6 +8,7 @@ Then open http://127.0.0.1:5000 in your browser.
 
 import os
 import re
+import sqlite3
 import uuid
 from datetime import datetime
 from functools import wraps
@@ -15,7 +16,7 @@ from functools import wraps
 from flask import (
     Flask, abort, flash, g, redirect, render_template, request, session, url_for,
 )
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import MethodNotAllowed, RequestEntityTooLarge
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
@@ -47,6 +48,7 @@ DIFFICULTIES = ["Easy", "Medium", "Hard"]
 
 MIN_PASSWORD_LENGTH = 6
 MAX_NAME_LENGTH = 60
+MAX_EMAIL_LENGTH = 254           # the longest email address the standard allows
 # A simple (not perfect) email check: something@something.something
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -117,6 +119,9 @@ def load_logged_in_user():
         g.user = get_db().execute(
             "SELECT id, name, email, created_at FROM users WHERE id = ?", (user_id,)
         ).fetchone()
+        if g.user is None:
+            # The account no longer exists (e.g. the database was reset)
+            session.clear()
 
 
 def login_required(view):
@@ -467,7 +472,7 @@ def register():
             errors.append(f"Name must be at most {MAX_NAME_LENGTH} characters.")
         if not email:
             errors.append("Email is required.")
-        elif not EMAIL_PATTERN.match(email):
+        elif len(email) > MAX_EMAIL_LENGTH or not EMAIL_PATTERN.match(email):
             errors.append("Please enter a valid email address.")
         if not password:
             errors.append("Password is required.")
@@ -491,11 +496,17 @@ def register():
             return render_template("register.html", name=name, email=email)
 
         # Never store the real password - only its secure hash
-        db.execute(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            (name, email, generate_password_hash(password)),
-        )
-        db.commit()
+        try:
+            db.execute(
+                "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
+                (name, email, generate_password_hash(password)),
+            )
+            db.commit()
+        except sqlite3.IntegrityError:
+            # Rare case: someone registered the same email a moment ago.
+            # The UNIQUE rule on users.email stops the duplicate.
+            flash("An account with this email already exists.", "error")
+            return render_template("register.html", name=name, email=email)
         flash("Account created successfully! Please log in.", "success")
         return redirect(url_for("login"))
 
@@ -851,6 +862,25 @@ def file_too_large(error):
     """Runs when an upload is bigger than MAX_CONTENT_LENGTH (error 413)."""
     flash(f"That image is too large. The maximum size is {MAX_UPLOAD_MB} MB.", "error")
     return redirect(request.url)
+
+
+@app.errorhandler(MethodNotAllowed)
+def method_not_allowed(error):
+    """Runs when e.g. someone types /logout in the address bar (a GET request)
+    for an action that only works through a form button (POST)."""
+    flash("That action can only be done using the buttons on the page.", "error")
+    return redirect(url_for("index"))
+
+
+@app.errorhandler(500)
+def server_error(error):
+    """Friendly page for unexpected errors (only shown when debug mode is off)."""
+    return render_template(
+        "404.html",
+        error_code=500,
+        error_title="Something went wrong in the kitchen.",
+        error_message="An unexpected error happened. Please try again in a moment.",
+    ), 500
 
 
 # ------------------------------------------------------------------

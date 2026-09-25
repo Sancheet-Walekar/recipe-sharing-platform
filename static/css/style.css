@@ -1199,6 +1199,25 @@ a.stat-card:hover {
     font-size: 0.85rem;
 }
 
+/* "120 / 500" under text boxes (added by script.js) */
+.char-counter {
+    align-self: flex-end;
+    color: var(--color-gray);
+    font-size: 0.8rem;
+}
+
+.char-counter.near-limit {
+    color: var(--color-primary-dark);
+    font-weight: 600;
+}
+
+/* Browser-level validation: red border on fields the user has touched */
+.form-group input:user-invalid,
+.form-group select:user-invalid,
+.form-group textarea:user-invalid {
+    border-color: var(--color-error);
+}
+
 /* Puts several small inputs next to each other (e.g. times and servings) */
 .form-row {
     display: grid;

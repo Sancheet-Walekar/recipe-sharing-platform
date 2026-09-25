@@ -13,7 +13,55 @@ document.addEventListener("DOMContentLoaded", function () {
     setupImagePreview();
     setupFilterAutoSubmit();
     setupStarRating();
+    setupCharacterCounters();
+    setupPasswordMatchCheck();
 });
+
+
+/* ---------- Live character counter under long text boxes ---------- */
+// Works for every <textarea maxlength="..."> on the page.
+function setupCharacterCounters() {
+    const textareas = document.querySelectorAll("textarea[maxlength]");
+
+    textareas.forEach(function (textarea) {
+        const maxLength = Number(textarea.getAttribute("maxlength"));
+        const counter = document.createElement("small");
+        counter.className = "char-counter";
+        textarea.insertAdjacentElement("afterend", counter);
+
+        function updateCounter() {
+            const used = textarea.value.length;
+            counter.textContent = used + " / " + maxLength;
+            // Turn the counter orange when the user is close to the limit
+            counter.classList.toggle("near-limit", used > maxLength * 0.9);
+        }
+
+        textarea.addEventListener("input", updateCounter);
+        updateCounter();
+    });
+}
+
+
+/* ---------- Register page: warn early if the passwords differ ---------- */
+function setupPasswordMatchCheck() {
+    const password = document.getElementById("password");
+    const confirmPassword = document.getElementById("confirm_password");
+    if (!password || !confirmPassword) {
+        return;
+    }
+
+    function checkMatch() {
+        // setCustomValidity makes the browser block the form with this message
+        if (confirmPassword.value && confirmPassword.value !== password.value) {
+            confirmPassword.setCustomValidity("Passwords do not match.");
+        } else {
+            confirmPassword.setCustomValidity("");
+        }
+    }
+
+    password.addEventListener("input", checkMatch);
+    confirmPassword.addEventListener("input", checkMatch);
+}
 
 
 /* ---------- Review form: show a word for the chosen star rating ---------- */
